@@ -36,7 +36,7 @@ export function LoginCard() {
           Orion <span className="text-primary">QA</span>
         </h1>
         <p className="text-sm text-muted-foreground text-center">
-          ThreeAlien CMS 後台前端 QA 回報系統
+          CMS 後台前端 QA 回報系統
         </p>
       </div>
 
