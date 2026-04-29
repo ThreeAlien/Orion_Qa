@@ -1,4 +1,4 @@
-# Orion QA — 獵戶座測試平台
+# Orion QA — 測試平台
 
 > 給 ThreeAlien CMS 後台前端 (`threeAlien_web`) 團隊用的 QA 回報系統。
 > 取代原本的 Excel 工作流，支援 Markdown 描述、Ctrl+V 直接貼截圖、狀態指派、留言討論。

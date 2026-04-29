@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Orion QA — 獵戶座測試平台",
+  title: "Orion QA — 測試平台",
   description: "CMS 後台前端 QA 回報系統",
 };
 
