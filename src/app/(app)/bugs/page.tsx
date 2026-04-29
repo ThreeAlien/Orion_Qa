@@ -1,0 +1,102 @@
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
+import { BugListFilters } from "./_components/bug-list-filters";
+import { BugRow } from "./_components/bug-row";
+import type { Bug, BugSeverity, BugStatus, Module, Profile } from "@/lib/types";
+
+type SearchParams = Promise<{
+  status?: string;
+  module?: string;
+  severity?: string;
+  assignee?: string;
+  q?: string;
+}>;
+
+export default async function BugListPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("bugs")
+    .select(
+      `
+      id, title, description, status, severity, created_at, updated_at,
+      module:modules(id, code, name),
+      reporter:profiles!bugs_reporter_id_fkey(id, email, full_name, avatar_url),
+      assignee:profiles!bugs_assignee_id_fkey(id, email, full_name, avatar_url)
+    `
+    )
+    .order("created_at", { ascending: false });
+
+  if (params.status) query = query.eq("status", params.status);
+  if (params.module) query = query.eq("module_id", params.module);
+  if (params.severity) query = query.eq("severity", params.severity);
+  if (params.assignee) query = query.eq("assignee_id", params.assignee);
+  if (params.q) query = query.ilike("title", `%${params.q}%`);
+
+  const [{ data: bugs, error }, { data: modules }, { data: profiles }] =
+    await Promise.all([
+      query,
+      supabase
+        .from("modules")
+        .select("id, code, name, is_active, sort_order")
+        .eq("is_active", true)
+        .order("sort_order"),
+      supabase.from("profiles").select("id, email, full_name, avatar_url"),
+    ]);
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      <header className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">問題列表</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            共 {bugs?.length ?? 0} 筆
+          </p>
+        </div>
+        <Link href="/bugs/new">
+          <Button>
+            <Plus size={16} />
+            回報新問題
+          </Button>
+        </Link>
+      </header>
+
+      <BugListFilters
+        modules={(modules ?? []) as Module[]}
+        profiles={(profiles ?? []) as Profile[]}
+      />
+
+      {error && (
+        <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          載入失敗：{error.message}
+        </div>
+      )}
+
+      <div className="mt-4 rounded-lg border border-border bg-card overflow-hidden">
+        {bugs && bugs.length > 0 ? (
+          <ul className="divide-y divide-border">
+            {(bugs as unknown as Bug[]).map((bug) => (
+              <BugRow key={bug.id} bug={bug} />
+            ))}
+          </ul>
+        ) : (
+          <div className="px-6 py-16 text-center text-muted-foreground text-sm">
+            還沒有任何問題單
+            <div className="mt-3">
+              <Link href="/bugs/new">
+                <Button size="sm">回報第一個問題</Button>
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
