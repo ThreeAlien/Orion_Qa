@@ -31,7 +31,6 @@ export default async function BugListPage({
 
   let isAdmin = false;
   let unsyncedCount = 0;
-  let dbgInfo = "";
   if (currentUserId) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -40,21 +39,16 @@ export default async function BugListPage({
       .maybeSingle();
     isAdmin = !!profile?.is_admin;
     if (isAdmin) {
-      const { count } = await supabase
+      // 欄位 external_task_id 若還沒在 DB 上（migration 0002 沒跑完整），
+      // 這個 query 會回 error，count 拿不到 — 安全起見當作 0
+      const { count, error: countErr } = await supabase
         .from("bugs")
         .select("id", { count: "exact", head: true })
         .not("assignee_id", "is", null)
         .is("external_task_id", null);
-      unsyncedCount = count ?? 0;
-
-      const { data: dbgBugs, error: dbgErr } = await supabase
-        .from("bugs")
-        .select("id, assignee_id, external_task_id");
-      const total = dbgBugs?.length ?? 0;
-      const hasAssignee =
-        dbgBugs?.filter((b) => b.assignee_id !== null).length ?? 0;
-      const errMsg = dbgErr ? `ERR=${dbgErr.message}` : "noerr";
-      dbgInfo = ` total=${total} hasAssignee=${hasAssignee} ${errMsg}`;
+      if (!countErr) {
+        unsyncedCount = count ?? 0;
+      }
     }
   }
 
@@ -94,10 +88,6 @@ export default async function BugListPage({
           <h1 className="text-2xl font-semibold tracking-tight">問題列表</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             共 {bugs?.length ?? 0} 筆
-            <span data-testid="dbg" className="ml-2 text-xs opacity-50">
-              [dbg admin={String(isAdmin)} unsynced={unsyncedCount}
-              {dbgInfo}]
-            </span>
           </p>
         </div>
         <div className="flex items-center gap-3">
