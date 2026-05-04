@@ -66,6 +66,21 @@ export async function syncBugToPm(
 
   const supabase = await createClient();
 
+  // Pre-flight: 確認 bugs 表已有 external_task_id 欄位（migration 0002 跑了）。
+  // 沒跑就直接 abort — 否則 POST PM 會成功但 QA 寫回失敗，下次又重建一張。
+  const { error: schemaErr } = await supabase
+    .from("bugs")
+    .select("external_task_id")
+    .limit(1);
+  if (schemaErr) {
+    console.error("[syncBugToPm] schema 缺欄位", schemaErr);
+    return {
+      ok: false,
+      error:
+        "Supabase 缺 bugs.external_task_id 欄位，請先跑 migration 0002 add column 那段",
+    };
+  }
+
   // assigneeId → email（null = 拔掉處理人）
   let assigneeEmail: string | null = null;
   if (input.newAssigneeId) {
