@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import { syncBugToPm } from "../_actions/sync-pm";
+import { revalidateBugList } from "../_actions/revalidate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -98,6 +99,8 @@ export function BugDetail({
       setError(error.message);
       return false;
     }
+    // 失效 /bugs 列表 RSC cache，回列表才看得到新 status / assignee
+    await revalidateBugList();
     router.refresh();
     return true;
   }
@@ -144,6 +147,7 @@ export function BugDetail({
       setError(error.message);
       return;
     }
+    await revalidateBugList();
     router.push("/bugs");
     router.refresh();
   }
