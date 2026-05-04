@@ -49,9 +49,11 @@ export type SyncBugResult =
 export async function syncBugToPm(
   input: SyncBugInput
 ): Promise<SyncBugResult> {
+  // 用 == null / != null 同時涵蓋 null 與 undefined
+  // （server 端 select 沒帶 external_task_id 欄位時會是 undefined）
   const shouldCreate =
-    input.newAssigneeId !== null && input.externalTaskId === null;
-  const shouldUpdate = input.externalTaskId !== null;
+    input.newAssigneeId !== null && input.externalTaskId == null;
+  const shouldUpdate = input.externalTaskId != null;
 
   if (!shouldCreate && !shouldUpdate) {
     return { ok: true, action: "none" };
