@@ -18,9 +18,9 @@ export function BugRow({
   return (
     <li
       className={cn(
-        "border-l-4 transition-colors",
+        "border-l-[6px] transition-colors",
         isMine
-          ? "border-l-primary bg-primary/[0.04]"
+          ? "border-l-primary bg-blue-100/70"
           : "border-l-transparent"
       )}
     >
@@ -28,7 +28,7 @@ export function BugRow({
         href={`/bugs/${bug.id}`}
         className={cn(
           "block px-4 py-3.5 transition-colors",
-          isMine ? "hover:bg-primary/10" : "hover:bg-muted/40"
+          isMine ? "hover:bg-blue-200/70" : "hover:bg-muted/40"
         )}
       >
         <div className="flex items-start gap-3">
