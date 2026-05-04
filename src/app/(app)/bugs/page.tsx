@@ -28,23 +28,25 @@ export default async function BugListPage({
     data: { user },
   } = await supabase.auth.getUser();
   const currentUserId = user?.id ?? null;
-  const { data: profile } = currentUserId
-    ? await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", currentUserId)
-        .maybeSingle()
-    : { data: null };
-  const isAdmin = !!profile?.is_admin;
 
-  // 算還沒同步到 PM 的 bug 數量（給 backfill 按鈕 badge 用）
-  const { count: unsyncedCount } = isAdmin
-    ? await supabase
+  let isAdmin = false;
+  let unsyncedCount = 0;
+  if (currentUserId) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", currentUserId)
+      .maybeSingle();
+    isAdmin = !!profile?.is_admin;
+    if (isAdmin) {
+      const { count } = await supabase
         .from("bugs")
         .select("id", { count: "exact", head: true })
         .not("assignee_id", "is", null)
-        .is("external_task_id", null)
-    : { count: 0 };
+        .is("external_task_id", null);
+      unsyncedCount = count ?? 0;
+    }
+  }
 
   let query = supabase
     .from("bugs")
@@ -85,9 +87,7 @@ export default async function BugListPage({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isAdmin && (
-            <BackfillButton pendingCount={unsyncedCount ?? 0} />
-          )}
+          {isAdmin && <BackfillButton pendingCount={unsyncedCount} />}
           <Link href="/bugs/new">
             <Button>
               <Plus size={16} />
