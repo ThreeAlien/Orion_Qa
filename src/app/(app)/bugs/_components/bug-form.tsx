@@ -12,7 +12,10 @@ import {
   SEVERITY_OPTIONS,
   type Module,
   type BugSeverity,
+  type Profile,
 } from "@/lib/types";
+import { syncBugToPm } from "../_actions/sync-pm";
+import { revalidateBugList } from "../_actions/revalidate";
 
 const TEMPLATE = `## 重現步驟
 1.
@@ -26,11 +29,18 @@ const TEMPLATE = `## 重現步驟
 
 `;
 
-export function BugForm({ modules }: { modules: Module[] }) {
+export function BugForm({
+  modules,
+  profiles,
+}: {
+  modules: Module[];
+  profiles: Profile[];
+}) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [moduleId, setModuleId] = useState(modules[0]?.id ?? "");
   const [severity, setSeverity] = useState<BugSeverity>("P2");
+  const [assigneeId, setAssigneeId] = useState("");
   const [description, setDescription] = useState(TEMPLATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +65,7 @@ export function BugForm({ modules }: { modules: Module[] }) {
       return;
     }
 
+    const newAssigneeId = assigneeId || null;
     const { data, error: insertError } = await supabase
       .from("bugs")
       .insert({
@@ -64,6 +75,7 @@ export function BugForm({ modules }: { modules: Module[] }) {
         severity,
         status: "pending",
         reporter_id: user.id,
+        assignee_id: newAssigneeId,
       })
       .select("id")
       .single();
@@ -74,6 +86,20 @@ export function BugForm({ modules }: { modules: Module[] }) {
       return;
     }
 
+    // 有指派處理人 → 同步到 PM 開卡（失敗不擋建單流程）
+    if (newAssigneeId) {
+      await syncBugToPm({
+        bugId: data.id,
+        externalTaskId: null,
+        newStatus: "pending",
+        newAssigneeId,
+        title: title.trim(),
+        description,
+        severity,
+      });
+    }
+
+    await revalidateBugList();
     router.push(`/bugs/${data.id}`);
     router.refresh();
   }
@@ -116,6 +142,20 @@ export function BugForm({ modules }: { modules: Module[] }) {
           </Select>
         </Field>
       </div>
+
+      <Field label="處理人（指派後 PM 自動開卡）">
+        <Select
+          value={assigneeId}
+          onChange={(e) => setAssigneeId(e.target.value)}
+        >
+          <option value="">— 暫不指派 —</option>
+          {profiles.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.full_name || p.email}
+            </option>
+          ))}
+        </Select>
+      </Field>
 
       <Field label="描述（支援 Markdown / Ctrl+V 貼圖）">
         <MarkdownEditor value={description} onChange={setDescription} />

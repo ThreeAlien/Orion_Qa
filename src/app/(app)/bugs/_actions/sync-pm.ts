@@ -1,11 +1,11 @@
 "use server";
 
-// 把 bug 狀態 / 處理人變動同步到 Orion PM。
-// 觸發點：bug-detail.tsx 改 status 或 assignee 後呼叫。
+// 把 bug 處理人變動同步到 Orion PM。
+// 觸發點：bug-detail.tsx 改 assignee；bug-form.tsx 建單時帶 assignee。
 // 規則：
-//   1. status === 'pending_acceptance' + 有 assignee + 沒 external_task_id → POST 建卡，寫回 id
-//   2. 已有 external_task_id → PATCH PM 卡 assignee（含改 null）
-//   3. 其他組合 → 不打 PM
+//   1. 有 assignee + 沒 external_task_id → POST 建卡，寫回 id（不依賴 status，指派當下就建）
+//   2. 已有 external_task_id → PATCH PM 卡 assignee（含改 null = 拔掉處理人）
+//   3. 其他組合（沒 assignee 也沒卡）→ 不打 PM
 // 失敗不 throw，回 { ok: false, error }，由 client 顯示 toast，不擋主流程。
 
 import { createClient } from "@/lib/supabase/server";
@@ -36,9 +36,7 @@ export async function syncBugToPm(
   input: SyncBugInput
 ): Promise<SyncBugResult> {
   const shouldCreate =
-    input.newStatus === "pending_acceptance" &&
-    input.newAssigneeId !== null &&
-    input.externalTaskId === null;
+    input.newAssigneeId !== null && input.externalTaskId === null;
   const shouldUpdate = input.externalTaskId !== null;
 
   if (!shouldCreate && !shouldUpdate) {
