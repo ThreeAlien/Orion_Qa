@@ -1,15 +1,21 @@
-export type BugStatus = "pending" | "in_progress" | "done";
+export type BugStatus =
+  | "pending"
+  | "in_progress"
+  | "pending_acceptance"
+  | "done";
 export type BugSeverity = "P0" | "P1" | "P2" | "P3";
 
 export const STATUS_LABEL: Record<BugStatus, string> = {
   pending: "待處理",
   in_progress: "處理中",
+  pending_acceptance: "待驗收",
   done: "已完成",
 };
 
 export const STATUS_OPTIONS: { value: BugStatus; label: string }[] = [
   { value: "pending", label: "待處理" },
   { value: "in_progress", label: "處理中" },
+  { value: "pending_acceptance", label: "待驗收" },
   { value: "done", label: "已完成" },
 ];
 
@@ -53,6 +59,7 @@ export type Bug = {
   status: BugStatus;
   reporter_id: string;
   assignee_id: string | null;
+  external_task_id: string | null;
   created_at: string;
   updated_at: string;
   module?: Module | null;

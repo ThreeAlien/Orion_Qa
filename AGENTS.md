@@ -46,6 +46,10 @@ bun run dev   # http://localhost:3000
 NEXT_PUBLIC_SUPABASE_URL=https://lrbzmkzulfechjriprzj.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=（前端 anon / publishable key，看 Supabase Dashboard）
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# 同步到 Orion PM（bug 進「待驗收」+ 有處理人時自動建任務卡）
+PM_API_BASE_URL=https://orion-pm.vercel.app
+PM_API_KEY=（跟 Orion PM 端 EXTERNAL_API_KEY 同一把 token；只 server action 讀）
 ```
 
 ## 結構速查

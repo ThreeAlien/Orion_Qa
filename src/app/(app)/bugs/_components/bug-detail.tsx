@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Edit3, Save, Trash2, X, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
+import { syncBugToPm } from "../_actions/sync-pm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -48,8 +49,44 @@ export function BugDetail({
   const [assigneeId, setAssigneeId] = useState(bug.assignee_id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncMsg, setSyncMsg] = useState<
+    { kind: "success" | "error"; text: string } | null
+  >(null);
+
+  // syncMsg 3.5 秒自動消失
+  useEffect(() => {
+    if (!syncMsg) return;
+    const t = setTimeout(() => setSyncMsg(null), 3500);
+    return () => clearTimeout(t);
+  }, [syncMsg]);
 
   const isReporter = bug.reporter_id === currentUserId;
+
+  // 把改動後的狀態 / 處理人推到 Orion PM。Server action 自己判斷要不要建卡 / PATCH。
+  async function syncToPm(args: {
+    newStatus: BugStatus;
+    newAssigneeId: string | null;
+  }) {
+    const result = await syncBugToPm({
+      bugId: bug.id,
+      externalTaskId: bug.external_task_id,
+      newStatus: args.newStatus,
+      newAssigneeId: args.newAssigneeId,
+      title: bug.title,
+      description: bug.description,
+      severity: bug.severity,
+    });
+    if (!result.ok) {
+      setSyncMsg({ kind: "error", text: `PM 同步失敗：${result.error}` });
+      return;
+    }
+    if (result.action === "created") {
+      setSyncMsg({ kind: "success", text: "已在 Orion PM 建立任務卡" });
+      router.refresh();
+    } else if (result.action === "updated") {
+      setSyncMsg({ kind: "success", text: "已同步處理人到 Orion PM" });
+    }
+  }
 
   async function patch(fields: Record<string, unknown>) {
     setBusy(true);
@@ -81,12 +118,15 @@ export function BugDetail({
 
   async function changeStatus(s: BugStatus) {
     setStatus(s);
-    await patch({ status: s });
+    const ok = await patch({ status: s });
+    if (ok) await syncToPm({ newStatus: s, newAssigneeId: assigneeId || null });
   }
 
   async function changeAssignee(id: string) {
+    const newId = id || null;
     setAssigneeId(id);
-    await patch({ assignee_id: id || null });
+    const ok = await patch({ assignee_id: newId });
+    if (ok) await syncToPm({ newStatus: status, newAssigneeId: newId });
   }
 
   async function changeSeverity(s: BugSeverity) {
@@ -222,9 +262,20 @@ export function BugDetail({
 
         {/* Actions */}
         <div className="px-5 py-3 border-t border-border bg-muted/30 flex items-center justify-between gap-2">
-          <div>
+          <div className="flex items-center gap-3">
             {error && (
               <span className="text-xs text-red-600">儲存失敗：{error}</span>
+            )}
+            {syncMsg && (
+              <span
+                className={`text-xs ${
+                  syncMsg.kind === "success"
+                    ? "text-emerald-600"
+                    : "text-amber-600"
+                }`}
+              >
+                {syncMsg.text}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2">

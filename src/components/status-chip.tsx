@@ -4,6 +4,7 @@ import { type BugStatus, STATUS_LABEL } from "@/lib/types";
 const styles: Record<BugStatus, string> = {
   pending: "bg-slate-100 text-slate-700 border-slate-200",
   in_progress: "bg-blue-50 text-primary border-blue-200",
+  pending_acceptance: "bg-amber-50 text-amber-700 border-amber-200",
   done: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
