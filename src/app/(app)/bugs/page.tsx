@@ -22,6 +22,12 @@ export default async function BugListPage({
   const params = await searchParams;
   const supabase = await createClient();
 
+  // 抓登入者 id，列表用來標出「指派給我」的 row
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const currentUserId = user?.id ?? null;
+
   let query = supabase
     .from("bugs")
     .select(
@@ -83,7 +89,11 @@ export default async function BugListPage({
         {bugs && bugs.length > 0 ? (
           <ul className="divide-y divide-border">
             {(bugs as unknown as Bug[]).map((bug) => (
-              <BugRow key={bug.id} bug={bug} />
+              <BugRow
+                key={bug.id}
+                bug={bug}
+                currentUserId={currentUserId}
+              />
             ))}
           </ul>
         ) : (
