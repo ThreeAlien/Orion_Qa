@@ -31,6 +31,7 @@ export default async function BugListPage({
 
   let isAdmin = false;
   let unsyncedCount = 0;
+  let dbgInfo = "";
   if (currentUserId) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -45,6 +46,20 @@ export default async function BugListPage({
         .not("assignee_id", "is", null)
         .is("external_task_id", null);
       unsyncedCount = count ?? 0;
+
+      const { data: dbgBugs } = await supabase
+        .from("bugs")
+        .select("id, assignee_id, external_task_id");
+      const total = dbgBugs?.length ?? 0;
+      const hasAssignee =
+        dbgBugs?.filter((b) => b.assignee_id !== null).length ?? 0;
+      const hasExternal =
+        dbgBugs?.filter((b) => b.external_task_id !== null).length ?? 0;
+      const externalNullKeyExists =
+        dbgBugs && dbgBugs[0]
+          ? "external_task_id" in dbgBugs[0]
+          : false;
+      dbgInfo = ` total=${total} hasAssignee=${hasAssignee} hasExternal=${hasExternal} colExists=${externalNullKeyExists}`;
     }
   }
 
@@ -85,7 +100,8 @@ export default async function BugListPage({
           <p className="text-sm text-muted-foreground mt-0.5">
             共 {bugs?.length ?? 0} 筆
             <span data-testid="dbg" className="ml-2 text-xs opacity-50">
-              [dbg admin={String(isAdmin)} unsynced={unsyncedCount}]
+              [dbg admin={String(isAdmin)} unsynced={unsyncedCount}
+              {dbgInfo}]
             </span>
           </p>
         </div>
