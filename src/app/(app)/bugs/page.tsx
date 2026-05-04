@@ -47,19 +47,14 @@ export default async function BugListPage({
         .is("external_task_id", null);
       unsyncedCount = count ?? 0;
 
-      const { data: dbgBugs } = await supabase
+      const { data: dbgBugs, error: dbgErr } = await supabase
         .from("bugs")
         .select("id, assignee_id, external_task_id");
       const total = dbgBugs?.length ?? 0;
       const hasAssignee =
         dbgBugs?.filter((b) => b.assignee_id !== null).length ?? 0;
-      const hasExternal =
-        dbgBugs?.filter((b) => b.external_task_id !== null).length ?? 0;
-      const externalNullKeyExists =
-        dbgBugs && dbgBugs[0]
-          ? "external_task_id" in dbgBugs[0]
-          : false;
-      dbgInfo = ` total=${total} hasAssignee=${hasAssignee} hasExternal=${hasExternal} colExists=${externalNullKeyExists}`;
+      const errMsg = dbgErr ? `ERR=${dbgErr.message}` : "noerr";
+      dbgInfo = ` total=${total} hasAssignee=${hasAssignee} ${errMsg}`;
     }
   }
 
