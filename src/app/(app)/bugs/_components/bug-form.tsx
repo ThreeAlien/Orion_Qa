@@ -93,6 +93,7 @@ export function BugForm({
         externalTaskId: null,
         newStatus: "pending",
         newAssigneeId,
+        reporterId: user.id,
         title: title.trim(),
         description,
         severity,

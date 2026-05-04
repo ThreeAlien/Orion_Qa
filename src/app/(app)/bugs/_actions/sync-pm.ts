@@ -18,11 +18,25 @@ const PRIORITY_BY_SEVERITY: Record<BugSeverity, "LOW" | "MEDIUM" | "HIGH"> = {
   P3: "LOW",
 };
 
+// 依「處理人是誰」推算 PM 卡 status：
+//   - 沒處理人 → TODO（沒人領）
+//   - 指派給 reporter（修完丟回去驗收）→ WAITING_REVIEW
+//   - 指派給其他人（修中）→ IN_PROGRESS
+function pmStatusFromAssignee(
+  newAssigneeId: string | null,
+  reporterId: string
+): "TODO" | "IN_PROGRESS" | "WAITING_REVIEW" {
+  if (newAssigneeId === null) return "TODO";
+  if (newAssigneeId === reporterId) return "WAITING_REVIEW";
+  return "IN_PROGRESS";
+}
+
 export type SyncBugInput = {
   bugId: string;
   externalTaskId: string | null;
   newStatus: BugStatus;
   newAssigneeId: string | null;
+  reporterId: string;
   title: string;
   description: string;
   severity: BugSeverity;
@@ -76,6 +90,8 @@ export async function syncBugToPm(
     Authorization: `Bearer ${apiKey}`,
   };
 
+  const pmStatus = pmStatusFromAssignee(input.newAssigneeId, input.reporterId);
+
   if (shouldCreate) {
     let res: Response;
     try {
@@ -87,6 +103,7 @@ export async function syncBugToPm(
           description: input.description,
           assigneeEmail,
           priority: PRIORITY_BY_SEVERITY[input.severity],
+          status: pmStatus,
           sourceRef: `Orion QA Bug #${input.bugId}`,
         }),
         cache: "no-store",
@@ -127,7 +144,7 @@ export async function syncBugToPm(
       {
         method: "PATCH",
         headers,
-        body: JSON.stringify({ assigneeEmail }),
+        body: JSON.stringify({ assigneeEmail, status: pmStatus }),
         cache: "no-store",
       }
     );

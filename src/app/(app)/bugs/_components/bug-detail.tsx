@@ -73,6 +73,7 @@ export function BugDetail({
       externalTaskId: bug.external_task_id,
       newStatus: args.newStatus,
       newAssigneeId: args.newAssigneeId,
+      reporterId: bug.reporter_id,
       title: bug.title,
       description: bug.description,
       severity: bug.severity,

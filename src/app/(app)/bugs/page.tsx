@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { BugListFilters } from "./_components/bug-list-filters";
 import { BugRow } from "./_components/bug-row";
-import type { Bug, BugSeverity, BugStatus, Module, Profile } from "@/lib/types";
+import { BackfillButton } from "./_components/backfill-button";
+import type { Bug, Module, Profile } from "@/lib/types";
 
 type SearchParams = Promise<{
   status?: string;
@@ -22,11 +23,28 @@ export default async function BugListPage({
   const params = await searchParams;
   const supabase = await createClient();
 
-  // 抓登入者 id，列表用來標出「指派給我」的 row
+  // 抓登入者 id + admin 旗標：列表用來標出「指派給我」的 row、admin 看得到 backfill 按鈕
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const currentUserId = user?.id ?? null;
+  const { data: profile } = currentUserId
+    ? await supabase
+        .from("profiles")
+        .select("is_admin")
+        .eq("id", currentUserId)
+        .maybeSingle()
+    : { data: null };
+  const isAdmin = !!profile?.is_admin;
+
+  // 算還沒同步到 PM 的 bug 數量（給 backfill 按鈕 badge 用）
+  const { count: unsyncedCount } = isAdmin
+    ? await supabase
+        .from("bugs")
+        .select("id", { count: "exact", head: true })
+        .not("assignee_id", "is", null)
+        .is("external_task_id", null)
+    : { count: 0 };
 
   let query = supabase
     .from("bugs")
@@ -66,12 +84,17 @@ export default async function BugListPage({
             共 {bugs?.length ?? 0} 筆
           </p>
         </div>
-        <Link href="/bugs/new">
-          <Button>
-            <Plus size={16} />
-            回報新問題
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <BackfillButton pendingCount={unsyncedCount ?? 0} />
+          )}
+          <Link href="/bugs/new">
+            <Button>
+              <Plus size={16} />
+              回報新問題
+            </Button>
+          </Link>
+        </div>
       </header>
 
       <BugListFilters
