@@ -84,6 +84,9 @@ export default async function BugListPage({
           <h1 className="text-2xl font-semibold tracking-tight">問題列表</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             共 {bugs?.length ?? 0} 筆
+            <span data-testid="dbg" className="ml-2 text-xs opacity-50">
+              [dbg admin={String(isAdmin)} unsynced={unsyncedCount}]
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-3">
