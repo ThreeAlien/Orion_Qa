@@ -39,13 +39,11 @@ export default async function BugListPage({
       .maybeSingle();
     isAdmin = !!profile?.is_admin;
     if (isAdmin) {
-      // 欄位 external_task_id 若還沒在 DB 上（migration 0002 沒跑完整），
-      // 這個 query 會回 error，count 拿不到 — 安全起見當作 0
+      // 算「有處理人」的全部數量（給 backfill / 重整按鈕 label 用）
       const { count, error: countErr } = await supabase
         .from("bugs")
         .select("id", { count: "exact", head: true })
-        .not("assignee_id", "is", null)
-        .is("external_task_id", null);
+        .not("assignee_id", "is", null);
       if (!countErr) {
         unsyncedCount = count ?? 0;
       }

@@ -6,7 +6,8 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { backfillPmCards, type BackfillResult } from "../_actions/backfill";
 
-// 一鍵把「有處理人但還沒在 PM 開卡」的歷史 bug 補建到 Orion PM。
+// 一鍵重整所有有處理人的 bug 跟 PM 卡的同步狀態：
+// 沒對應卡的 → POST 新建；已有卡的 → PATCH 更新 status / assignee / description。
 // 只 admin 看得到（page 端把關）。
 export function BackfillButton({ pendingCount }: { pendingCount: number }) {
   const router = useRouter();
@@ -14,6 +15,9 @@ export function BackfillButton({ pendingCount }: { pendingCount: number }) {
   const [result, setResult] = useState<BackfillResult | null>(null);
 
   if (pendingCount === 0 && !result) return null;
+  const label = busy
+    ? "同步中…"
+    : `重整 PM 卡（${pendingCount} 筆有處理人）`;
 
   async function run() {
     setBusy(true);
@@ -38,7 +42,7 @@ export function BackfillButton({ pendingCount }: { pendingCount: number }) {
             }
           >
             {result.message ??
-              `已建 ${result.created} / ${result.total}${
+              `新建 ${result.created} / 更新 ${result.updated} / 共 ${result.total}${
                 result.failed > 0 ? `，失敗 ${result.failed}` : ""
               }`}
           </span>
@@ -65,7 +69,7 @@ export function BackfillButton({ pendingCount }: { pendingCount: number }) {
         ) : (
           <RefreshCw size={14} />
         )}
-        {busy ? "同步中…" : `同步 ${pendingCount} 筆未連結卡`}
+        {label}
       </Button>
     </div>
   );

@@ -118,6 +118,12 @@ export async function syncBugToPm(
     input.reporterId
   );
 
+  // PM 卡 description 故意保持精簡 — 只放 QA detail link。
+  // 原因：PM description 不支援 markdown 渲染，塞 QA 原文 md 反而醜。
+  // 看 detail 點 link 回 QA 看正規 markdown 渲染。
+  const qaDetailUrl = `https://orion-qa.vercel.app/bugs/${input.bugId}`;
+  const pmDescription = `🔗 來源：${qaDetailUrl}`;
+
   if (shouldCreate) {
     let res: Response;
     try {
@@ -126,11 +132,10 @@ export async function syncBugToPm(
         headers,
         body: JSON.stringify({
           title: input.title,
-          description: input.description,
+          description: pmDescription,
           assigneeEmail,
           priority: PRIORITY_BY_SEVERITY[input.severity],
           status: pmStatus,
-          sourceRef: `Orion QA Bug #${input.bugId}`,
         }),
         cache: "no-store",
       });
@@ -170,7 +175,11 @@ export async function syncBugToPm(
       {
         method: "PATCH",
         headers,
-        body: JSON.stringify({ assigneeEmail, status: pmStatus }),
+        body: JSON.stringify({
+          assigneeEmail,
+          status: pmStatus,
+          description: pmDescription,
+        }),
         cache: "no-store",
       }
     );
