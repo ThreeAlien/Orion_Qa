@@ -27,20 +27,31 @@ export function BackfillButton({ pendingCount }: { pendingCount: number }) {
   return (
     <div className="flex items-center gap-3">
       {result && (
-        <span
-          className={`text-xs ${
-            result.ok && result.failed === 0
-              ? "text-emerald-600"
-              : result.failed > 0
-              ? "text-amber-600"
-              : "text-red-600"
-          }`}
-        >
-          {result.message ??
-            `已建 ${result.created} / ${result.total}${
-              result.failed > 0 ? `，失敗 ${result.failed}` : ""
-            }`}
-        </span>
+        <div className="text-xs flex flex-col items-end gap-0.5 max-w-md">
+          <span
+            className={
+              result.ok && result.failed === 0
+                ? "text-emerald-600"
+                : result.failed > 0
+                ? "text-amber-600"
+                : "text-red-600"
+            }
+          >
+            {result.message ??
+              `已建 ${result.created} / ${result.total}${
+                result.failed > 0 ? `，失敗 ${result.failed}` : ""
+              }`}
+          </span>
+          {result.errors?.slice(0, 3).map((e) => (
+            <span
+              key={e.bugId}
+              className="text-red-600 truncate max-w-[420px]"
+              title={`${e.title} — ${e.error}`}
+            >
+              · {e.title.slice(0, 30)}：{e.error}
+            </span>
+          ))}
+        </div>
       )}
       <Button
         type="button"
