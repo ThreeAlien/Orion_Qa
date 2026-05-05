@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bug, Layers, LogOut } from "lucide-react";
+import { Bug, Layers, LogOut, Users } from "lucide-react";
 import { OrionLogo } from "@/components/orion-logo";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -12,6 +12,7 @@ import type { Profile } from "@/lib/types";
 const navItems = [
   { href: "/bugs", label: "問題列表", icon: Bug },
   { href: "/modules", label: "功能模組", icon: Layers, adminOnly: true },
+  { href: "/members", label: "成員管理", icon: Users, adminOnly: true },
 ];
 
 export function AppShell({
