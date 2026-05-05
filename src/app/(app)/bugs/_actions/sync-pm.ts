@@ -18,6 +18,9 @@ const PRIORITY_BY_SEVERITY: Record<BugSeverity, "LOW" | "MEDIUM" | "HIGH"> = {
   P3: "LOW",
 };
 
+// QA 同步來的卡都歸到 PM 的這個專案（PM 端依名稱 lookup，找不到不擋）
+const PM_PROJECT_NAME = "CMS 網站模組";
+
 // 推算 PM 卡 status：
 //   - QA bug status === 'done' → DONE
 //   - QA bug status === 'pending_acceptance' → WAITING_REVIEW（QA 端標待驗收）
@@ -136,6 +139,7 @@ export async function syncBugToPm(
           assigneeEmail,
           priority: PRIORITY_BY_SEVERITY[input.severity],
           status: pmStatus,
+          projectName: PM_PROJECT_NAME,
         }),
         cache: "no-store",
       });
