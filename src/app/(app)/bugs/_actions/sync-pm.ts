@@ -18,14 +18,19 @@ const PRIORITY_BY_SEVERITY: Record<BugSeverity, "LOW" | "MEDIUM" | "HIGH"> = {
   P3: "LOW",
 };
 
-// 依「處理人是誰」推算 PM 卡 status：
-//   - 沒處理人 → TODO（沒人領）
+// 推算 PM 卡 status：
+//   - QA bug status === 'done' → DONE
+//   - QA bug status === 'pending_acceptance' → WAITING_REVIEW（QA 端標待驗收）
+//   - 沒處理人 → TODO
 //   - 指派給 reporter（修完丟回去驗收）→ WAITING_REVIEW
 //   - 指派給其他人（修中）→ IN_PROGRESS
-function pmStatusFromAssignee(
+function pmStatusFromBug(
+  qaStatus: BugStatus,
   newAssigneeId: string | null,
   reporterId: string
-): "TODO" | "IN_PROGRESS" | "WAITING_REVIEW" {
+): "TODO" | "IN_PROGRESS" | "WAITING_REVIEW" | "DONE" {
+  if (qaStatus === "done") return "DONE";
+  if (qaStatus === "pending_acceptance") return "WAITING_REVIEW";
   if (newAssigneeId === null) return "TODO";
   if (newAssigneeId === reporterId) return "WAITING_REVIEW";
   return "IN_PROGRESS";
@@ -107,7 +112,11 @@ export async function syncBugToPm(
     Authorization: `Bearer ${apiKey}`,
   };
 
-  const pmStatus = pmStatusFromAssignee(input.newAssigneeId, input.reporterId);
+  const pmStatus = pmStatusFromBug(
+    input.newStatus,
+    input.newAssigneeId,
+    input.reporterId
+  );
 
   if (shouldCreate) {
     let res: Response;
