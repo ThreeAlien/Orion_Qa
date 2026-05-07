@@ -27,7 +27,8 @@ export default async function BugDetailPage({
       .from("bugs")
       .select(
         `
-        id, title, description, status, severity, module_id, reporter_id, assignee_id, created_at, updated_at,
+        id, title, description, status, severity, module_id, reporter_id, assignee_id,
+        external_task_id, archived, archived_at, created_at, updated_at,
         module:modules(id, code, name),
         reporter:profiles!bugs_reporter_id_fkey(id, email, full_name, avatar_url),
         assignee:profiles!bugs_assignee_id_fkey(id, email, full_name, avatar_url)

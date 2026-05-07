@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BugListFilters } from "./_components/bug-list-filters";
 import { BugRow } from "./_components/bug-row";
 import { BackfillButton } from "./_components/backfill-button";
+import { cn } from "@/lib/utils";
 import type { Bug, Module, Profile } from "@/lib/types";
 
 type SearchParams = Promise<{
@@ -13,6 +14,7 @@ type SearchParams = Promise<{
   severity?: string;
   assignee?: string;
   q?: string;
+  view?: "active" | "archived";
 }>;
 
 export default async function BugListPage({
@@ -21,6 +23,7 @@ export default async function BugListPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
+  const view = params.view === "archived" ? "archived" : "active";
   const supabase = await createClient();
 
   // 抓登入者 id + admin 旗標：列表用來標出「指派給我」的 row、admin 看得到 backfill 按鈕
@@ -54,13 +57,18 @@ export default async function BugListPage({
     .from("bugs")
     .select(
       `
-      id, title, description, status, severity, created_at, updated_at,
+      id, title, description, status, severity, archived, archived_at, created_at, updated_at, external_task_id,
       module:modules(id, code, name),
       reporter:profiles!bugs_reporter_id_fkey(id, email, full_name, avatar_url),
       assignee:profiles!bugs_assignee_id_fkey(id, email, full_name, avatar_url)
     `
-    )
-    .order("created_at", { ascending: false });
+    );
+
+  // 封存區依封存時間排序，進行中依建立時間
+  query =
+    view === "archived"
+      ? query.eq("archived", true).order("archived_at", { ascending: false })
+      : query.eq("archived", false).order("created_at", { ascending: false });
 
   if (params.status) query = query.eq("status", params.status);
   if (params.module) query = query.eq("module_id", params.module);
@@ -68,16 +76,29 @@ export default async function BugListPage({
   if (params.assignee) query = query.eq("assignee_id", params.assignee);
   if (params.q) query = query.ilike("title", `%${params.q}%`);
 
-  const [{ data: bugs, error }, { data: modules }, { data: profiles }] =
-    await Promise.all([
-      query,
-      supabase
-        .from("modules")
-        .select("id, code, name, is_active, sort_order")
-        .eq("is_active", true)
-        .order("sort_order"),
-      supabase.from("profiles").select("id, email, full_name, avatar_url"),
-    ]);
+  const [
+    { data: bugs, error },
+    { data: modules },
+    { data: profiles },
+    { count: activeCount },
+    { count: archivedCount },
+  ] = await Promise.all([
+    query,
+    supabase
+      .from("modules")
+      .select("id, code, name, is_active, sort_order")
+      .eq("is_active", true)
+      .order("sort_order"),
+    supabase.from("profiles").select("id, email, full_name, avatar_url"),
+    supabase
+      .from("bugs")
+      .select("id", { count: "exact", head: true })
+      .eq("archived", false),
+    supabase
+      .from("bugs")
+      .select("id", { count: "exact", head: true })
+      .eq("archived", true),
+  ]);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -85,19 +106,48 @@ export default async function BugListPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">問題列表</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            共 {bugs?.length ?? 0} 筆
+            {view === "archived" ? "封存區 ・ " : ""}共 {bugs?.length ?? 0} 筆
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isAdmin && <BackfillButton pendingCount={unsyncedCount} />}
-          <Link href="/bugs/new">
-            <Button>
-              <Plus size={16} />
-              回報新問題
-            </Button>
-          </Link>
+          {isAdmin && view === "active" && (
+            <BackfillButton pendingCount={unsyncedCount} />
+          )}
+          {view === "active" && (
+            <Link href="/bugs/new">
+              <Button>
+                <Plus size={16} />
+                回報新問題
+              </Button>
+            </Link>
+          )}
         </div>
       </header>
+
+      <div className="mb-3 inline-flex rounded-lg border border-border bg-card p-1 text-sm">
+        <Link
+          href="/bugs"
+          className={cn(
+            "px-3 py-1.5 rounded-md transition-colors",
+            view === "active"
+              ? "bg-primary text-white font-semibold"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          進行中 <span className="tabular-nums">({activeCount ?? 0})</span>
+        </Link>
+        <Link
+          href="/bugs?view=archived"
+          className={cn(
+            "px-3 py-1.5 rounded-md transition-colors",
+            view === "archived"
+              ? "bg-primary text-white font-semibold"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          封存區 <span className="tabular-nums">({archivedCount ?? 0})</span>
+        </Link>
+      </div>
 
       <BugListFilters
         modules={(modules ?? []) as Module[]}
@@ -118,9 +168,14 @@ export default async function BugListPage({
                 key={bug.id}
                 bug={bug}
                 currentUserId={currentUserId}
+                view={view}
               />
             ))}
           </ul>
+        ) : view === "archived" ? (
+          <div className="px-6 py-16 text-center text-muted-foreground text-sm">
+            封存區是空的 — 已測試完畢的問題單封存後會出現在這裡，可隨時還原
+          </div>
         ) : (
           <div className="px-6 py-16 text-center text-muted-foreground text-sm">
             還沒有任何問題單

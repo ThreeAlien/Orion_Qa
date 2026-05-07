@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Edit3, Save, Trash2, X, Loader2 } from "lucide-react";
+import { Edit3, Save, Trash2, X, Loader2, Archive, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/client";
 import { syncBugToPm } from "../_actions/sync-pm";
+import { archiveBug, unarchiveBug } from "../_actions/archive";
 import { revalidateBugList } from "../_actions/revalidate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -150,6 +151,45 @@ export function BugDetail({
     }
     await revalidateBugList();
     router.push("/bugs");
+    router.refresh();
+  }
+
+  async function handleArchive() {
+    if (!confirm("確定要封存這個問題單？（封存區可隨時還原）")) return;
+    setBusy(true);
+    setError(null);
+    const result = await archiveBug(bug.id);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    if (result.pmError) {
+      setSyncMsg({ kind: "error", text: `已封存，但 PM 同步失敗：${result.pmError}` });
+    } else if (result.pmSynced) {
+      setSyncMsg({ kind: "success", text: "已封存，並同步 PM 卡片" });
+    } else {
+      setSyncMsg({ kind: "success", text: "已封存" });
+    }
+    router.refresh();
+  }
+
+  async function handleUnarchive() {
+    setBusy(true);
+    setError(null);
+    const result = await unarchiveBug(bug.id);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    if (result.pmError) {
+      setSyncMsg({ kind: "error", text: `已還原，但 PM 同步失敗：${result.pmError}` });
+    } else if (result.pmSynced) {
+      setSyncMsg({ kind: "success", text: "已還原，並同步 PM 卡片" });
+    } else {
+      setSyncMsg({ kind: "success", text: "已還原" });
+    }
     router.refresh();
   }
 
@@ -321,6 +361,27 @@ export function BugDetail({
                     刪除
                   </Button>
                 )}
+                {bug.archived ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleUnarchive}
+                    disabled={busy}
+                  >
+                    <RotateCcw size={14} />
+                    還原
+                  </Button>
+                ) : bug.status === "done" ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleArchive}
+                    disabled={busy}
+                  >
+                    <Archive size={14} />
+                    封存
+                  </Button>
+                ) : null}
                 <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
                   <Edit3 size={14} />
                   編輯

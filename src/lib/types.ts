@@ -60,6 +60,8 @@ export type Bug = {
   reporter_id: string;
   assignee_id: string | null;
   external_task_id: string | null;
+  archived: boolean;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
   module?: Module | null;
